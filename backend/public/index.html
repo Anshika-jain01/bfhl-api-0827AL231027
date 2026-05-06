@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0827AL231027</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #6366f1; --primary-hover: #4f46e5; --bg: #0f172a; --glass: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1); --text: #f8fafc; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%); min-height: 100vh; display: flex; justify-content: center; align-items: center; color: var(--text); padding: 20px; }
+        .container { width: 100%; max-width: 600px; background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 24px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        h1 { font-size: 1.5rem; margin-bottom: 24px; font-weight: 600; text-align: center; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .input-group { margin-bottom: 24px; }
+        label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; }
+        textarea { width: 100%; height: 120px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; color: #fff; font-family: monospace; resize: none; transition: border-color 0.3s; }
+        textarea:focus { outline: none; border-color: var(--primary); }
+        button { width: 100%; padding: 14px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        button:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .error { color: #ef4444; font-size: 0.85rem; margin-top: 8px; display: none; }
+        .response-section { margin-top: 32px; display: none; border-top: 1px solid var(--glass-border); padding-top: 32px; }
+        .select-tags { display: flex; flex-wrap: wrap; gap: 8px; background: rgba(0, 0, 0, 0.2); padding: 8px; border-radius: 12px; border: 1px solid var(--glass-border); min-height: 48px; cursor: pointer; margin-bottom: 20px; }
+        .tag { background: var(--primary); padding: 4px 12px; border-radius: 8px; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+        .dropdown-menu { background: #1e293b; border: 1px solid var(--glass-border); border-radius: 12px; margin-top: 8px; display: none; }
+        .dropdown-item { padding: 12px 16px; cursor: pointer; }
+        .dropdown-item:hover { background: rgba(255, 255, 255, 0.05); }
+        .results { background: rgba(0, 0, 0, 0.2); padding: 20px; border-radius: 16px; }
+        .result-item { margin-bottom: 12px; }
+        .result-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px; }
+        .result-value { font-weight: 600; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BFHL Challenge</h1>
+        <div class="input-group">
+            <label for="apiInput">API Input (JSON)</label>
+            <textarea id="apiInput" placeholder='{"data": ["A", "1", "b"]}'></textarea>
+            <div id="jsonError" class="error">Invalid JSON format</div>
+        </div>
+        <button id="submitBtn">Submit</button>
+        <div id="responseSection" class="response-section">
+            <label>Multi Filter</label>
+            <div id="selectTags" class="select-tags"><span style="color: #64748b;">Select options...</span></div>
+            <div id="dropdownMenu" class="dropdown-menu">
+                <div class="dropdown-item" data-value="Alphabets">Alphabets</div>
+                <div class="dropdown-item" data-value="Numbers">Numbers</div>
+                <div class="dropdown-item" data-value="Highest lowercase alphabet">Highest lowercase alphabet</div>
+            </div>
+            <div class="results">
+                <h3>Filtered Response</h3>
+                <div id="filteredResults" style="margin-top: 12px;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const apiInput = document.getElementById('apiInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseSection = document.getElementById('responseSection');
+        const filteredResults = document.getElementById('filteredResults');
+        const selectTags = document.getElementById('selectTags');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        let apiResponse = null; let selectedOptions = [];
+
+        // Using relative URL for seamless merged deployment
+        const BACKEND_URL = '/bfhl';
+
+        submitBtn.addEventListener('click', async () => {
+            try {
+                const parsed = JSON.parse(apiInput.value);
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsed)
+                });
+                apiResponse = await response.json();
+                if (apiResponse.is_success) {
+                    responseSection.style.display = 'block';
+                    renderResults();
+                }
+            } catch (e) { document.getElementById('jsonError').style.display = 'block'; }
+        });
+
+        selectTags.addEventListener('click', () => dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block');
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const val = e.target.dataset.value;
+                if (!selectedOptions.includes(val)) { selectedOptions.push(val); updateTags(); renderResults(); }
+                dropdownMenu.style.display = 'none';
+            });
+        });
+
+        function updateTags() {
+            selectTags.innerHTML = selectedOptions.length ? '' : '<span style="color: #64748b;">Select options...</span>';
+            selectedOptions.forEach(opt => {
+                const tag = document.createElement('div'); tag.className = 'tag';
+                tag.innerHTML = `${opt} <span onclick="event.stopPropagation(); selectedOptions=selectedOptions.filter(o=>o!=='${opt}'); updateTags(); renderResults();" style="cursor:pointer">&times;</span>`;
+                selectTags.appendChild(tag);
+            });
+        }
+
+        function renderResults() {
+            filteredResults.innerHTML = '';
+            if (selectedOptions.includes('Numbers')) addResultItem('Numbers', apiResponse.numbers.join(', '));
+            if (selectedOptions.includes('Alphabets')) addResultItem('Alphabets', apiResponse.alphabets.join(', '));
+            if (selectedOptions.includes('Highest lowercase alphabet')) addResultItem('Highest lowercase alphabet', apiResponse.highest_lowercase_alphabet.join(', '));
+        }
+
+        function addResultItem(label, value) {
+            const div = document.createElement('div'); div.className = 'result-item';
+            div.innerHTML = `<div class="result-label">${label}</div><div class="result-value">${value || 'None'}</div>`;
+            filteredResults.appendChild(div);
+        }
+    </script>
+</body>
+</html>

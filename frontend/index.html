@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>0827AL231027</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            text-align: center;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass);
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        button:hover {
+            background: #4f46e5;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .error {
+            color: #ef4444;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .filter-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .multi-select {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .tag {
+            padding: 6px 12px;
+            background: var(--glass);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tag.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .result-box {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--glass);
+        }
+
+        .result-item {
+            margin-bottom: 12px;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #818cf8;
+            margin-bottom: 4px;
+        }
+
+        .result-value {
+            font-family: monospace;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BFHL Challenge API</h1>
+        
+        <div class="input-group">
+            <label>API Input (JSON)</label>
+            <textarea id="jsonInput" placeholder='{"data": ["M", "1", "334", "4", "B"]}'></textarea>
+            <div id="jsonError" class="error">Invalid JSON format</div>
+        </div>
+
+        <button id="submitBtn">Submit</button>
+
+        <div id="filterSection" class="filter-section">
+            <label>Multi Filter</label>
+            <div class="multi-select">
+                <div class="tag" data-value="numbers">Numbers</div>
+                <div class="tag" data-value="alphabets">Alphabets</div>
+                <div class="tag" data-value="highest_lowercase_alphabet">Highest lowercase alphabet</div>
+            </div>
+
+            <div class="result-box" id="resultBox">
+                <!-- Results injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const submitBtn = document.getElementById('submitBtn');
+        const jsonInput = document.getElementById('jsonInput');
+        const jsonError = document.getElementById('jsonError');
+        const filterSection = document.getElementById('filterSection');
+        const resultBox = document.getElementById('resultBox');
+        const tags = document.querySelectorAll('.tag');
+
+        let apiResponse = null;
+        let selectedFilters = [];
+
+        // Toggle filters
+        tags.forEach(tag => {
+            tag.addEventListener('click', () => {
+                const value = tag.getAttribute('data-value');
+                if (selectedFilters.includes(value)) {
+                    selectedFilters = selectedFilters.filter(v => v !== value);
+                    tag.classList.remove('selected');
+                } else {
+                    selectedFilters.push(value);
+                    tag.classList.add('selected');
+                }
+                renderResults();
+            });
+        });
+
+        const renderResults = () => {
+            if (!apiResponse) return;
+            
+            resultBox.innerHTML = '';
+            
+            if (selectedFilters.length === 0) {
+                resultBox.innerHTML = '<div style="color: #64748b; font-size: 0.9rem">Select filters to view data</div>';
+                return;
+            }
+
+            selectedFilters.forEach(filter => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                
+                let label = '';
+                if (filter === 'numbers') label = 'Numbers';
+                if (filter === 'alphabets') label = 'Alphabets';
+                if (filter === 'highest_lowercase_alphabet') label = 'Highest Lowercase Alphabet';
+
+                div.innerHTML = `
+                    <div class="result-label">${label}</div>
+                    <div class="result-value">${JSON.stringify(apiResponse[filter])}</div>
+                `;
+                resultBox.appendChild(div);
+            });
+        };
+
+        submitBtn.addEventListener('click', async () => {
+            const rawValue = jsonInput.value.trim();
+            jsonError.style.display = 'none';
+            jsonError.innerText = 'Invalid JSON format';
+
+            let parsed;
+            try {
+                parsed = JSON.parse(rawValue);
+                if (typeof parsed !== 'object' || parsed === null) {
+                    throw new Error('Not an object');
+                }
+            } catch (err) {
+                jsonError.style.display = 'block';
+                return;
+            }
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Processing...';
+
+                // Live backend URL on Vercel
+                const API_URL = 'https://backend-two-plum-93.vercel.app/bfhl'; 
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsed)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'API Error');
+                }
+
+                apiResponse = await response.json();
+                filterSection.style.display = 'block';
+                renderResults();
+
+            } catch (err) {
+                jsonError.innerText = `Error: ${err.message}`;
+                jsonError.style.display = 'block';
+                console.error(err);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Submit';
+            }
+        });
+    </script>
+</body>
+</html>
