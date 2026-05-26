@@ -18,6 +18,16 @@ const isPrime = (num) => {
 };
 
 /**
+ * GET /
+ * Root route to prevent Cannot GET / error
+ */
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: "BFHL API is running. Access the API at /bfhl"
+    });
+});
+
+/**
  * GET /bfhl
  * Returns the operation code
  */
